@@ -4,4 +4,8 @@
 
 dataset/__pycache__/
 
+*.ipynb
+dataset/*.ipynb
+
 .gitignore
+

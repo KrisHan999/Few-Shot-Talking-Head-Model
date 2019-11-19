@@ -27,7 +27,7 @@ def generateVideoList(rootDir):
             # print("*" * 8)
             videoFiles = os.listdir(os.path.join(rootDir, personId, videoId))
             for video in videoFiles:
-                if(os.path.splitext(video) == '.mp4'):
+                if(os.path.splitext(video)[1] == '.mp4'):
                     videoList.append({"personId": i, "videoPath": os.path.join(rootDir, personId, videoId, video)})
     return videoList
 
