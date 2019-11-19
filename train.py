@@ -10,14 +10,18 @@ def main():
                                 help="Path to the source folder where the raw VoxCeleb dataset is located.")
     argmentParser.add_argument("--output", type=str, required=True,
                                 help="Path to the folder where the pre-processed dataset will be stored.")
+    argmentParser.add_argument("--gpu", action="store_true",
+                                help="Run the model on GPU.")
     args = argmentParser.parse_args()
 
     dataset = metaTrainVideoDataset(
         K = 8,
-        rootDir = args.source,
-        outputDir = args.output,
+        # rootDir = args.source,
+        # outputDir = args.output,
+        rootDir='./data/train/mp4',
+        outputDir='./data/train/output',
         randomFrame = True,
-        device = 'gpu',
+        device='cuda' if (torch.cuda.is_available() and args.gpu) else 'cpu',
         transform = transforms.Compose([
                 transforms.Resize(256),
                 transforms.CenterCrop(256),

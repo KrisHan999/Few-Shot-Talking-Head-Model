@@ -33,7 +33,7 @@ class metaTrainVideoDataset(Dataset):
 
         # get K+1 frames, K for embedder; 1 for generator
         data = generateKSelectedFramesAndLandmarksForSpecificVideo(self.K + 1, self.videoList[idx], self.outputDir,
-                                                                   self.fa, self.randomFrame)
+                                                                   self.fa)
 
         if (self.randomFrame):
             random.shuffle(data)
