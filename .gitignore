@@ -1,11 +1,8 @@
 .ipynb_checkpoints
 
-.dataset/.ipynb_checkpoints
-
 dataset/__pycache__/
 
-*.ipynb
-dataset/*.ipynb
+notebook
 
 .gitignore
 

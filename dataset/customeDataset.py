@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import Dataset
 import random
 
-from .processVoxCelDataset import *
+from dataset.processVoxCelDataset import *
 
 
 class metaTrainVideoDataset(Dataset):
