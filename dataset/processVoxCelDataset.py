@@ -103,6 +103,9 @@ def generateLandmarksForSpecificVideo(frames, fa):
         data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
 
+        plt.close(fig)
+
+
         return data
 
     landmarkFrames = []
@@ -128,6 +131,9 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, videoPath, outputDir,
         os.makedirs(outputDir)
 
     outputPath = os.path.join(outputDir, os.path.basename(os.path.dirname(videoPath)) + '.vid')
+
+    print(outputPath)
+
     if os.path.exists(outputPath):
         data = pkl.load(open(outputPath, 'rb'))
         return data
