@@ -18,8 +18,6 @@ def main():
         K = 8,
         rootDir = args.source,
         outputDir = args.output,
-        # rootDir='./data/train/mp4',
-        # outputDir='./data/train/output',
         randomFrame = True,
         device='cuda' if (torch.cuda.is_available() and args.gpu) else 'cpu',
         transform = transforms.Compose([
