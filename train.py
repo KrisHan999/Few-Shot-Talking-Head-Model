@@ -27,5 +27,11 @@ def main():
 
     dataLoader = DataLoader(dataset, batch_size=2, shuffle=False)
 
-    for i in enumerate(dataset):
+    print("*"*8, " start process data", "*"*8)
+    for i, data in enumerate(dataset):
+        print(f'Process video{i}')
         pass
+    print("*"*8, " finish processing data", "*"*8)
+
+if __name__ == '__main__':
+    main();
