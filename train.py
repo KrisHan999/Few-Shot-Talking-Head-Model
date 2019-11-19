@@ -1,5 +1,5 @@
 import argparse
-from .dataset.customeDataset import *
+from dataset.customeDataset import *
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -34,4 +34,4 @@ def main():
     print("*"*8, " finish processing data", "*"*8)
 
 if __name__ == '__main__':
-    main();
+    main()
