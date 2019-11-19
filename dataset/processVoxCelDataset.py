@@ -27,7 +27,8 @@ def generateVideoList(rootDir):
             # print("*" * 8)
             videoFiles = os.listdir(os.path.join(rootDir, personId, videoId))
             for video in videoFiles:
-                videoList.append({"personId": i, "videoPath": os.path.join(rootDir, personId, videoId, video)})
+                if(os.path.splitext(video) == '.mp4'):
+                    videoList.append({"personId": i, "videoPath": os.path.join(rootDir, personId, videoId, video)})
     return videoList
 
 
@@ -106,7 +107,6 @@ def generateLandmarksForSpecificVideo(frames, fa):
     landmarkFrames = []
     for frame in frames:
         # landmark -> [x, y]
-        print(frame.shape)
         landmark = fa.get_landmarks(frame)[0]
         landmarkFrame = generateLandmarkForSpecificFrame(frame, landmark)
         landmarkFrames.append(landmarkFrame)
