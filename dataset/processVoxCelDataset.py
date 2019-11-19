@@ -13,25 +13,21 @@ import os
 
 def generateVideoList(rootDir):
     """
-    Generate a list of video paths
+    Generate a list of video paths, store personId as index
     :param folderPath: root path for all the video files
     :return: a list of video paths
     """
-
-    def checkFilePath(dirnames, filenames):
-        """
-        check whether the current folder only contains video files. Then we could get the video inside the folder.
-        :param dirnames:
-        :param filenames:
-        :return:
-        """
-        return len([x for x in filenames if os.path.splitext(x)[1] != ".mp4"]) == 0 and len(dirnames) == 0
-
     videoList = []
-    for dirpath, dirnames, filenames in os.walk(rootDir):
-        if (checkFilePath(dirnames, filenames)):
-            for filename in filenames:
-                videoList.append(os.path.join(dirpath, filename))
+
+    personList = os.listdir(rootDir)
+    for i, personId in enumerate(personList):
+        videoListPerPerson = os.listdir(os.path.join(rootDir, personId))
+        for videoId in videoListPerPerson:
+            # print(videoId)
+            # print("*" * 8)
+            videoFiles = os.listdir(os.path.join(rootDir, personId, videoId))
+            for video in videoFiles:
+                videoList.append({"personId": i, "videoPath": os.path.join(rootDir, personId, videoId, video)})
     return videoList
 
 
@@ -102,16 +98,15 @@ def generateLandmarksForSpecificVideo(frames, fa):
 
         data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        plt.close(fig)
 
         plt.close(fig)
-
 
         return data
 
     landmarkFrames = []
     for frame in frames:
         # landmark -> [x, y]
+        print(frame.shape)
         landmark = fa.get_landmarks(frame)[0]
         landmarkFrame = generateLandmarkForSpecificFrame(frame, landmark)
         landmarkFrames.append(landmarkFrame)
@@ -119,7 +114,7 @@ def generateLandmarksForSpecificVideo(frames, fa):
     return landmarkFrames
 
 
-def generateKSelectedFramesAndLandmarksForSpecificVideo(K, videoPath, outputDir, fa):
+def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa):
     """
     Generate random frame list and landmark frame list, which are both [K, H. W. 3].
     :param K: Number of frames
@@ -128,12 +123,18 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, videoPath, outputDir,
     :param randomSeed: random seed for random frames
     :return: two list
     """
+
+    personId = video["personId"]
+    videoPath = video["videoPath"]
+
     if not os.path.isdir(outputDir):
         os.makedirs(outputDir)
 
-    outputPath = os.path.join(outputDir, os.path.basename(os.path.dirname(videoPath)) + '.vid')
+    outputPath = os.path.join(outputDir,
+                              f'personId_{personId}_' + os.path.basename(os.path.dirname(videoPath)) + '.vid')
 
     print(outputPath)
+    print(videoPath)
 
     if os.path.exists(outputPath):
         data = pkl.load(open(outputPath, 'rb'))
@@ -145,7 +146,8 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, videoPath, outputDir,
     data = []
 
     for selectedFrame, landmarkFrame in zip(selectedFrames, landmarkFrames):
-        data.append({"frame": selectedFrame,
+        data.append({"personId": personId,
+                     "frame": selectedFrame,
                      "landmarks": landmarkFrame})
 
     pkl.dump(data, open(outputPath, 'wb'))

@@ -25,12 +25,12 @@ class metaTrainVideoDataset(Dataset):
 
         self.videoList = generateVideoList(rootDir)
         self.fa = FaceAlignment(LandmarksType._2D, device=device)
+        self.personNumber = len(os.listdir(rootDir))
 
     def __len__(self):
         return len(self.videoList)
 
     def __getitem__(self, idx):
-
         # get K+1 frames, K for embedder; 1 for generator
         data = generateKSelectedFramesAndLandmarksForSpecificVideo(self.K + 1, self.videoList[idx], self.outputDir,
                                                                    self.fa)
@@ -40,6 +40,7 @@ class metaTrainVideoDataset(Dataset):
 
         data_array = []
         for d in data:
+            personId = d["personId"]
             frame = PIL.Image.fromarray(d['frame'], 'RGB')  # [H, W, 3]
             landmarks = PIL.Image.fromarray(d['landmarks'], 'RGB')  # [H, W, 3]
             if self.transform:
@@ -50,6 +51,8 @@ class metaTrainVideoDataset(Dataset):
             data_array.append(torch.stack((frame, landmarks)))  # [2, 3, H, W]
         data_array = torch.stack(data_array)  # [K+1, 2, 3, H, W]
 
-        return idx, data_array
+        return personId, data_array
+#         return idx, data_array
+
 
 
