@@ -35,18 +35,6 @@ def main():
         pass
     print("*"*8, " finish processing data", "*"*8)
 
-    # dataset = metaTrainVideoDataset(
-    #     K=8,
-    #     rootDir='../dataForFewShotTalkingHeadModel/train/mp4/',
-    #     outputDir='../dataForFewShotTalkingHeadModel/train/output/',
-    #     randomFrame=True,
-    #     device='cpu',
-    #     transform=transforms.Compose([
-    #         transforms.Resize(256),
-    #         transforms.CenterCrop(256),
-    #         transforms.ToTensor(),
-    #     ])
-    # )
 
     dataLoader = DataLoader(dataset, batch_size=2, shuffle=False)
 
