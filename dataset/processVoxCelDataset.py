@@ -138,7 +138,7 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa)
         os.makedirs(outputDir)
 
     outputPath = os.path.join(outputDir,
-                              f'personId_{personId}_' + os.path.basename(os.path.dirname(videoPath)) + "_" + os.path.splitext(os.path.basename(videoPath))[0] + '.vid')
+                              personId + '_' + os.path.basename(os.path.dirname(videoPath)) + "_" + os.path.splitext(os.path.basename(videoPath))[0] + '.vid')
 
     print(outputPath)
     print(videoPath)
