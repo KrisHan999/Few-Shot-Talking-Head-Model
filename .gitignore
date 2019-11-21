@@ -5,8 +5,11 @@ dataset/__pycache__/
 notebook
 
 idea
+.idea
 
 dataForFewShotTalkingHeadModel
+
+network/__pycache__
 
 .gitignore
 
