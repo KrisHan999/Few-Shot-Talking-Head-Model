@@ -9,6 +9,8 @@ import numpy as np
 import pickle as pkl
 from face_alignment import FaceAlignment, LandmarksType
 import os
+import config
+
 
 
 def generateVideoList(rootDir):

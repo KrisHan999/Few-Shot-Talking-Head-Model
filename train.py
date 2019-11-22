@@ -2,6 +2,7 @@ import argparse
 from dataset.customeDataset import *
 from torch.utils.data import DataLoader
 from torchvision import transforms
+import config
 
 
 def main():
@@ -15,19 +16,21 @@ def main():
     args = argmentParser.parse_args()
 
     dataset = metaTrainVideoDataset(
-        K = 8,
+        K = config.K,
         rootDir = args.source,
         outputDir = args.output,
         randomFrame = True,
         device='cuda' if (torch.cuda.is_available() and args.gpu) else 'cpu',
         transform = transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(256),
+                transforms.Resize(config.IMAGE_SIZE),
+                transforms.CenterCrop(config.IMAGE_SIZE),
                 transforms.ToTensor(),
+                transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
             ])
         )
 
-    dataLoader = DataLoader(dataset, batch_size=2, shuffle=False)
+    dataLoader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=False)
 
     print("*"*8, " start process data", "*"*8)
     for i, data in enumerate(dataset):
