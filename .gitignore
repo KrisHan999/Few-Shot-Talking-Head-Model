@@ -6,6 +6,8 @@ notebook
 
 idea
 .idea
+model
+__pycache__
 
 dataForFewShotTalkingHeadModel
 

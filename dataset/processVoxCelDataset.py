@@ -30,7 +30,7 @@ def generateVideoList(rootDir):
             videoFiles = os.listdir(os.path.join(rootDir, personId, videoId))
             for video in videoFiles:
                 if(os.path.splitext(video)[1] == '.mp4'):
-                    videoList.append({"personId": personId, "videoPath": os.path.join(rootDir, personId, videoId, video)})
+                    videoList.append({"index": i, "personId": personId, "videoPath": os.path.join(rootDir, personId, videoId, video)})
     return videoList
 
 
@@ -133,6 +133,7 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa)
     :return: two list
     """
 
+    index = video["index"]
     personId = video["personId"]
     videoPath = video["videoPath"]
 
@@ -155,7 +156,7 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa)
     data = []
 
     for selectedFrame, landmarkFrame in zip(selectedFrames, landmarkFrames):
-        data.append({"personId": personId,
+        data.append({"index": index,
                      "frame": selectedFrame,
                      "landmarks": landmarkFrame})
 

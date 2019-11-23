@@ -131,7 +131,7 @@ class Discriminator(nn.Module):
             print('finetuning')
             out = torch.bmm(out, self.wPrime.unsqueeze(0)) + self.b
         else:
-            assert i != None, "input person id"
+            assert i is not None, "input person id"
             out = torch.bmm(out, self.W[:, i].transpose(0, 1).unsqueeze(-1) + self.w_0) + self.b
 
         out = out.view(B, -1)
@@ -140,6 +140,21 @@ class Discriminator(nn.Module):
 
 
 class Generator(nn.Module):
+    P_Len = (512 * 2 + 512 * 2) * 4 + (512 * 2 + 256 * 2) + (256 * 2 + 128 * 2) + (128 * 2 + 64 * 2) + (
+            64 * 2 + 3 * 2) + (3 * 2)
+    P_Slice = [0,
+               512 * 4,
+               512 * 4,
+               512 * 4,
+               512 * 4,
+               512 * 2 + 256 * 2,
+               256 * 2 + 128 * 2,
+               128 * 2 + 64 * 2,
+               64 * 2 + 3 * 2,
+               3 * 2]
+    for i in range(1, len(P_Slice)):
+        P_Slice[i] = P_Slice[i - 1] + P_Slice[i]
+
     def __init__(self, finetuning = False):
         super(Generator, self).__init__()
 
@@ -166,31 +181,14 @@ class Generator(nn.Module):
         self.conv = nn.utils.spectral_norm(nn.Conv2d(in_channels=3, out_channels=3, kernel_size=3, padding=1))
         self.sigmoid = nn.Sigmoid()
 
-        self.generate_P()
+        self.P = nn.Parameter(torch.randn(self.P_Len, 512))
 
         self.finetuning = finetuning
 
         self.psi = nn.Parameter(torch.randn(1, self.P_Len, 1))
 
 
-    def generate_P(self):
-        self.P_Len = (512 * 2 + 512 * 2) * 4 + (512 * 2 + 256 * 2) + (256 * 2 + 128 * 2) + (128 * 2 + 64 * 2) + (
-                    64 * 2 + 3 * 2) + (3*2)
 
-        self.P = nn.Parameter(torch.randn(self.P_Len, 512))
-
-        self.P_Slice = [0,
-                   512 * 4,
-                   512 * 4,
-                   512 * 4,
-                   512 * 4,
-                   512 * 2 + 256 * 2,
-                   256 * 2 + 128 * 2,
-                   128 * 2 + 64 * 2,
-                   64 * 2 + 3 * 2,
-                   3*2]
-        for i in range(1, len(self.P_Slice)):
-            self.P_Slice[i] = self.P_Slice[i - 1] + self.P_Slice[i]
 
         # fine tuning is for one single video or image sequence, input e is the mean of the vector from embedder.
     def initFinetuning(self, e):
