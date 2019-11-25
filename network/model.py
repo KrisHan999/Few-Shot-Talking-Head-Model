@@ -108,17 +108,17 @@ class Discriminator(nn.Module):
 
         out = self.resBlock1(out)
 
-        out = self.resDown1(out)
-        out = self.resDown2(out)
-        out = self.resDown3(out)
+        out1 = self.resDown1(out)
+        out2 = self.resDown2(out1)
+        out3 = self.resDown3(out2)
 
-        out = self.selfAttendion(out)
+        out = self.selfAttendion(out3)
 
-        out = self.resDown4(out)
-        out = self.resDown5(out)
-        out = self.resDown6(out)
+        out4 = self.resDown4(out)
+        out5 = self.resDown5(out4)
+        out6= self.resDown6(out5)
 
-        out = self.resBlock2(out)
+        out = self.resBlock2(out6)
 
         # apply sum pooling after ReLU activation based on BIG GAN
         out = self.relu(out)                                            # [B, 512, 4, 4]
@@ -136,7 +136,7 @@ class Discriminator(nn.Module):
 
         out = out.view(B, -1)
 
-        return out
+        return out, [out1, out2, out3, out4, out5, out6]
 
 
 class Generator(nn.Module):

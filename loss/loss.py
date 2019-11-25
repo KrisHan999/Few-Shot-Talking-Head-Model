@@ -29,6 +29,7 @@ class LossEG(nn.Module):
         self.VGGface_Activations = VGG_Activations(vgg_face(pretrained=True), self.vggface_layers)
 
     def loss_cnt(self, x, x_hat):
+
         IMG_NET_MEAN = torch.Tensor([0.485, 0.456, 0.406]).reshape([1, 3, 1, 1]).to(x.device)
         IMG_NET_STD = torch.Tensor([0.229, 0.224, 0.225]).reshape([1, 3, 1, 1]).to(x.device)
 
@@ -53,27 +54,36 @@ class LossEG(nn.Module):
 
 
 
-    def loss_adv(self, d_x_hat):
+    def loss_adv(self, d_x_hat, d_x_fm, d_x_hat_fm):
         '''
         adversarial loss for training generator
         :param d_x_hat: [B, 1]
         :return: scalar
         '''
-        return -d_x_hat.mean()
+        return -d_x_hat.mean() + self.loss_fm(d_x_fm, d_x_hat_fm) * config.LOSS_FM_WEIGHT
 
-    def loss_mch(self, vector, wi):
+    def loss_mch(self, mean_vector, wi):
         '''
         match loss of mean vector and wi in the discriminator
         :param vector: [B, 512, 1]
         :param wi: [B, 512, 1]
         :return:
         '''
-        return F.l1_loss(vector, wi)*config.LOSS_MCH_WEIGHT
+        return F.l1_loss(mean_vector, wi)*config.LOSS_MCH_WEIGHT
 
-    def forward(self, x, x_hat, d_x_hat, vector, wi):
+    def loss_fm(self, d_x_fm, d_x_hat_fm):
+
+        loss = 0
+        for i in range(len(d_x_fm)):
+            loss += F.l1_loss(d_x_fm[i], d_x_hat_fm[i])
+        return loss
+
+    def forward(self, x, x_hat, d_x_hat, mean_vector, wi, d_x_fm, d_x_hat_fm):
 
         cnt_loss = self.loss_cnt(x, x_hat)
-        mch_loss = self.loss_mch(vector, wi)
+        mch_loss = self.loss_mch(mean_vector, wi)
         adv_loss = self.loss_adv(d_x_hat)
 
         return cnt_loss+mch_loss+adv_loss
+
+
