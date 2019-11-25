@@ -8,6 +8,8 @@ import logging
 import os
 import sys
 from datetime import datetime
+from PIL import Image
+
 
 from network.model import *
 from loss.loss import *
@@ -40,7 +42,6 @@ def main():
     logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
     logging.info("==== Meta-training ====")
-    logging.info(f'Running on {torch.cuda.device_count()} GPU')
 
 
     # DATASET and DATALOADER -------------------------------------------------------------------------------------------
@@ -56,9 +57,9 @@ def main():
         transform=transforms.Compose([
             transforms.Resize(config.IMAGE_SIZE),
             transforms.CenterCrop(config.IMAGE_SIZE),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+            transforms.ToTensor()
+            # transforms.Normalize(mean=[0.485, 0.456, 0.406],
+            #                      std=[0.229, 0.224, 0.225])
         ])
     )
 
@@ -66,28 +67,25 @@ def main():
 
     # MODEL and GPU --------------------------------------------------------------------------------------------------------
 
-    device = torch.device("cuda:0")
+    device_0 = torch.device("cuda:0")
 
-    E = Embedder()
-    G = Generator()
-    D = Discriminator(num_person=6)
+    E = Embedder(gpu=config.GPU["E"])
+    G = Generator(gpu=config.GPU["G"])
+    D = Discriminator(num_person=len(dataset), gpu=config.GPU["D"])
 
-    cretirion_EG = LossEG()
-    cretirion_D = LossD()
+    # pytorch_total_params = sum(p.numel() for p in G.parameters()) + sum(p.numel() for p in E.parameters()) + sum(p.numel() for p in D.parameters())
+    # print("Total size of parameters for E, G, D is: ", pytorch_total_params)
 
-    if torch.cuda.device_count() > 1:
-        print("Let's use ", torch.cuda.device_count(), " GPUs.")
-        E = nn.DataParallel(E)
-        G = nn.DataParallel(G)
-        D = nn.DataParallel(D)
-        cretirion_EG = nn.DataParallel(cretirion_EG)
-        cretirion_D = nn.DataParallel(cretirion_D)
+    cretirion_EG = LossEG(gpu=config.GPU["LossEG"])
+    cretirion_D = LossD(gpu=config.GPU["LossD"])
 
-    E.to(device)
-    G.to(device)
-    D.to(device)
-    cretirion_EG.to(device)
-    cretirion_D.to(device)
+    # if torch.cuda.device_count() > 1:
+    #     print("Let's use ", torch.cuda.device_count(), " GPUs.")
+    #     E = nn.DataParallel(E)
+    #     G = nn.DataParallel(G)
+    #     D = nn.DataParallel(D)
+    #     cretirion_EG = nn.DataParallel(cretirion_EG)
+    #     cretirion_D = nn.DataParallel(cretirion_D)
 
     optimizer_EG = Adam(params=list(E.parameters()) + list(G.parameters()),
                         lr=config.LEARNING_RATE_EG)
@@ -95,18 +93,39 @@ def main():
                        lr=config.LEARNING_RATE_D)
 
 
+    # Load Model if exist
+    cpu = torch.device("cpu")
+    if(os.path.isfile(config.MODELS_path)):
+        logging.info("===== Loading model =====")
+        checkpoint = torch.load(config.MODELS_path, map_location=cpu)
+        E.load_state_dict(checkpoint['E_state_dict'])
+        G.load_state_dict(checkpoint['G_state_dict'])
+        D.load_state_dict(checkpoint['D_state_dict'])
+        optimizer_EG.load_state_dict(checkpoint['optimizer_EG_state_dict'])
+        optimizer_D.load_state_dict(checkpoint['optimizer_D_state_dict'])
+        epochCurrent = checkpoint['epoch']
+        loss_EG = checkpoint['loss_EG']
+        loss_D = checkpoint['loss_D']
+        num_vid = checkpoint['num_vid']
+        batch_current = checkpoint['batch_num'] +1
+        logging.info("===== Done loading model =====")
+    else:
+        batch_current = 0
+        epochCurrent = 0
+
+
     # TRAIN
 
-    logging.info(f'Start training -> EPOCHS: {config.EPOCHS}; BATCHES: {len(dataset)}; BATCH_SIZE: {config.BATCH_SIZE}')
+    logging.info(f'Start training -> EPOCHS: {config.EPOCHS}; BATCHES: {len(dataset)}; BATCH_SIZE: {config.BATCH_SIZE} ---> CURRENT EPOCH: {epochCurrent}; CURRENT_BATCH: {batch_current}')
 
-    for epoch in range(config.EPOCHS):
+    for epoch in range(epochCurrent, config.EPOCHS):
         epoch_start = datetime.now()
 
         E.train()
         G.train()
         D.train()
 
-        for batch_num, (index, data_array) in enumerate(dataset):
+        for batch_num, (index, data_array) in enumerate(dataLoader, start=batch_current):
             batch_start = datetime.now()
 
             target_img = data_array[:, -1, 0, ...]                                   # [B, 3, 256, 256]
@@ -123,29 +142,29 @@ def main():
             score_generated_img, fm_teature_hat = D(generated_img, target_landmark, index.numpy())
             score_target_img, fm_teature = D(target_img, target_landmark, index.numpy())
 
-            wi = D.W[:, index.numpy()].T.unsqueeze(-1)
+            wi = D.W[:, index.numpy()].transpose(0, 1).unsqueeze(-1)
 
             loss_D = cretirion_D(score_target_img, score_generated_img)
             loss_EG = cretirion_EG(target_img, generated_img, score_generated_img, mean_vector, wi, fm_teature, fm_teature_hat)
 
-            loss = loss_D + loss_EG
+            loss = loss_D.to(device_0) + loss_EG.to(device_0)
 
             optimizer_EG.zero_grad()
             optimizer_D.zero_grad()
 
-            loss.backward()
+            loss.backward(retain_graph=False)
             optimizer_EG.step()
             optimizer_D.step()
 
             # train discriminator again
             # detach the generated image
-            score_generated_img = D(generated_img.detach(), target_landmark, index.numpy())
-            score_target_img = D(target_img, target_landmark, index.numpy())
+            score_generated_img, fm_teature_hat = D(generated_img.detach(), target_landmark, index.numpy())
+            score_target_img, fm_teature = D(target_img, target_landmark, index.numpy())
             loss_D = cretirion_D(score_target_img, score_generated_img)
             loss = loss_D
 
             optimizer_D.zero_grad()
-            loss.backward()
+            loss.backward(retain_graph=False)
             optimizer_D.step()
 
             batch_end = datetime.now()
@@ -154,6 +173,55 @@ def main():
                          f'Time: {batch_end - batch_start} | '
                          f'Loss_E_G = {loss_EG.item():.4f} Loss_D = {loss_D.item():.4f}')
             logging.debug(f'D(x) = {score_target_img.mean().item():.4f} D(x_hat) = {score_generated_img.mean().item():.4f}')
+
+            if batch_num % 500 == 499:
+                logging.info('Saving latest: epoch: {epoch}; batch: {batch_num}')
+                torch.save({
+                    'epoch': epoch,
+                    'loss_EG': loss_EG,
+                    'loss_D': loss_D,
+                    'E_state_dict': E.state_dict(),
+                    'G_state_dict': G.state_dict(),
+                    'D_state_dict': D.state_dict(),
+                    'optimizer_EG_state_dict': optimizer_EG.state_dict(),
+                    'optimizer_D_state_dict': optimizer_D.state_dict(),
+                    'num_vid': dataset.__len__(),
+                    'batch_num': batch_num
+                    }, config.MODELS_path)
+                logging.info('Done saving latest: epoch: {epoch}; batch: {batch_num}')
+
+                if(target_img.shape[0] == config.BATCH_SIZE):
+                    temp_output = []
+                    for i in range(config.BATCH_SIZE):
+                        temp_output.append(np.concatenate([target_img[i].permute(1, 2, 0).detach().cpu().numpy(), 
+                                        target_landmark[i].permute(1, 2, 0).detach().cpu().numpy(), 
+                                        generated_img[i].permute(1, 2, 0).detach().cpu().numpy()],
+                                        axis=0))
+                    temp_output = np.concatenate(temp_output, axis=1)
+
+                    img = (temp_output * 255.0).clip(0, 255).astype("uint8")
+                    img = Image.fromarray(img)
+                    img.save(os.path.join(config.LOG_IMAGE_DIR, f'epoch_{epoch}_batch_{batch_num}.jpg'))
+                    # print(temp_output.shape)
+                    # plt.imshow(temp_output)
+                    # plt.show()
+
+        if(epoch % 500 == 499):
+            logging.info('Saving model epoch: {epoch}')
+            torch.save({
+                'epoch': epoch,
+                'loss_EG': loss_EG,
+                'loss_D': loss_D,
+                'E_state_dict': E.state_dict(),
+                'G_state_dict': G.state_dict(),
+                'D_state_dict': D.state_dict(),
+                'optimizer_EG_state_dict': optimizer_EG.state_dict(),
+                'optimizer_D_state_dict': optimizer_D.state_dict(),
+                'num_vid': dataset.__len__(),
+                'batch_num': batch_num
+                }, config.MODELS_path)
+            logging.info('Done saving model epoch: {epoch}')
+
 
 if __name__ == '__main__':
     main()

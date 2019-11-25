@@ -3,15 +3,15 @@
 dataset/__pycache__/
 
 notebook
-
 idea
 .idea
 model
+models
+logs
+log_img
 __pycache__
 
 dataForFewShotTalkingHeadModel
 
 network/__pycache__
-
-.gitignore
 

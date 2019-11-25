@@ -7,7 +7,7 @@ class Embedder(nn.Module):
     input -> [B, 6, 256, 256]
     output -> [B, 512, 1, 1]
     '''
-    def __init__(self):
+    def __init__(self, gpu=None):
 
         super(Embedder, self).__init__()
 
@@ -28,8 +28,16 @@ class Embedder(nn.Module):
         # average pooling is propositional to the sum pooling
         self.avgPool = nn.AdaptiveAvgPool2d(output_size=(1, 1))                         # [B, 512, 1, 1]
 
+        self.gpu = gpu
+        if self.gpu is not None:
+            self.cuda(gpu)
+
 
     def forward(self, x, y):
+
+        if self.gpu is not None:
+            x = x.cuda(self.gpu)
+            y = y.cuda(self.gpu)
 
         B, C, H, W = x.shape
 
@@ -59,7 +67,7 @@ class Embedder(nn.Module):
 
 class Discriminator(nn.Module):
 
-    def __init__(self, num_person, finetuning=False):
+    def __init__(self, num_person, finetuning=False, gpu=None):
 
         super(Discriminator, self).__init__()
 
@@ -91,6 +99,10 @@ class Discriminator(nn.Module):
         self.finetuning = finetuning
         self.wPrime = nn.Parameter(torch.randn(512, 1))
 
+        self.gpu = gpu
+        if self.gpu is not None:
+            self.cuda(gpu)
+
     # fine tuning is for one single video or image sequence, input e is the mean of the vector from embedder.
     def initFinetuning(self, e):
         '''
@@ -101,6 +113,10 @@ class Discriminator(nn.Module):
         self.wPrime.data = e.detach().data + self.w_0.data                                    # [512, 1]
 
     def forward(self, x, y, i=None):
+
+        if self.gpu is not None:
+            x = x.cuda(self.gpu)
+            y = y.cuda(self.gpu)
 
         B, C, H, W = x.shape
 
@@ -132,7 +148,7 @@ class Discriminator(nn.Module):
             out = torch.bmm(out, self.wPrime.unsqueeze(0)) + self.b
         else:
             assert i is not None, "input person id"
-            out = torch.bmm(out, self.W[:, i].transpose(0, 1).unsqueeze(-1) + self.w_0) + self.b
+            out = torch.bmm(out, self.W[:, i].transpose(0, 1).unsqueeze(-1) + self.w_0.unsqueeze(0).expand(len(i), 512, 1)) + self.b
 
         out = out.view(B, -1)
 
@@ -155,7 +171,7 @@ class Generator(nn.Module):
     for i in range(1, len(P_Slice)):
         P_Slice[i] = P_Slice[i - 1] + P_Slice[i]
 
-    def __init__(self, finetuning = False):
+    def __init__(self, finetuning = False, gpu=None):
         super(Generator, self).__init__()
 
         self.resDown1 = ResidualBlockG_Down(in_dim=3, out_dim=64)                                                   # [B, 64, 128, 128]
@@ -187,7 +203,9 @@ class Generator(nn.Module):
 
         self.psi = nn.Parameter(torch.randn(1, self.P_Len, 1))
 
-
+        self.gpu = gpu
+        if self.gpu is not None:
+            self.cuda(gpu)
 
 
         # fine tuning is for one single video or image sequence, input e is the mean of the vector from embedder.
@@ -207,6 +225,11 @@ class Generator(nn.Module):
         :param e: [B, 512, 1]
         :return:
         '''
+
+        if self.gpu is not None:
+            x = x.cuda(self.gpu)
+            e = e.cuda(self.gpu)
+
         B, C, H, W = x.shape
 
         if self.finetuning:

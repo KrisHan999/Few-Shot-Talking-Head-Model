@@ -39,7 +39,9 @@ class metaTrainVideoDataset(Dataset):
             random.shuffle(data)
 
         data_array = []
-        for d in data:
+        for i, d in enumerate(data):
+            if i == self.K+1:
+                break;
             index = d["index"]
             frame = PIL.Image.fromarray(d['frame'], 'RGB')  # [H, W, 3]
             landmarks = PIL.Image.fromarray(d['landmarks'], 'RGB')  # [H, W, 3]
@@ -50,6 +52,8 @@ class metaTrainVideoDataset(Dataset):
             assert torch.is_tensor(landmarks), "The source landmarks must be converted to Tensors."
             data_array.append(torch.stack((frame, landmarks)))  # [2, 3, H, W]
         data_array = torch.stack(data_array)  # [K+1, 2, 3, H, W]
+
+        assert torch.eq(torch.tensor(data_array.shape), torch.tensor([self.K+1, 2, 3, config.IMAGE_SIZE, config.IMAGE_SIZE])).all(), f'Wrong data size-> {data_array.shape}; target shape -> {[self.K+1, 2, 3, config.IMAGE_SIZE, config.IMAGE_SIZE]}'
 
         return index, data_array
 #         return idx, data_array

@@ -6,8 +6,12 @@ from network.vgg import *
 import config
 
 class LossD(nn.Module):
-    def __init__(self):
+    def __init__(self, gpu=None):
         super(LossD, self).__init__()
+
+        self.gpu = gpu
+        if self.gpu is not None:
+            self.cuda(gpu)
 
     def forward(self, d_x, d_x_hat):
         '''
@@ -16,17 +20,24 @@ class LossD(nn.Module):
         :param d_x_hat: [B, 1]
         :return:
         '''
+        if self.gpu is not None:
+            d_x = d_x.cuda(self.gpu)
+            d_x_hat = d_x_hat.cuda(self.gpu)
         return F.relu(1-d_x).mean() + F.relu(1+d_x_hat).mean()
 
 
 class LossEG(nn.Module):
-    def __init__(self):
+    def __init__(self, gpu=None):
         super(LossEG, self).__init__()
 
         self.vgg19_layers = [1, 6, 11, 18, 25]
         self.vggface_layers = [1, 6, 11, 20, 29]
         self.VGG19_Activations = VGG_Activations(vgg19(pretrained=True), self.vgg19_layers)
         self.VGGface_Activations = VGG_Activations(vgg_face(pretrained=True), self.vggface_layers)
+
+        self.gpu = gpu
+        if self.gpu is not None:
+            self.cuda(gpu)
 
     def loss_cnt(self, x, x_hat):
 
@@ -60,7 +71,7 @@ class LossEG(nn.Module):
         :param d_x_hat: [B, 1]
         :return: scalar
         '''
-        return -d_x_hat.mean() + self.loss_fm(d_x_fm, d_x_hat_fm) * config.LOSS_FM_WEIGHT
+        return (-d_x_hat.mean() + self.loss_fm(d_x_fm, d_x_hat_fm) * config.LOSS_FM_WEIGHT)
 
     def loss_mch(self, mean_vector, wi):
         '''
@@ -76,13 +87,26 @@ class LossEG(nn.Module):
         loss = 0
         for i in range(len(d_x_fm)):
             loss += F.l1_loss(d_x_fm[i], d_x_hat_fm[i])
+
+        # if self.gpu is not None:
+        #     loss = loss.cuda(self.gpu)
         return loss
 
     def forward(self, x, x_hat, d_x_hat, mean_vector, wi, d_x_fm, d_x_hat_fm):
 
+        if self.gpu is not None:
+            x = x.cuda(self.gpu)
+            x_hat = x_hat.cuda(self.gpu)
+            d_x_hat = d_x_hat.cuda(self.gpu)
+            mean_vector = mean_vector.cuda(self.gpu)
+            wi = wi.cuda(self.gpu)
+            d_x_fm = [data.cuda(self.gpu) for data in d_x_fm]
+            d_x_hat_fm = [data.cuda(self.gpu) for data in d_x_hat_fm]
+
+
         cnt_loss = self.loss_cnt(x, x_hat)
         mch_loss = self.loss_mch(mean_vector, wi)
-        adv_loss = self.loss_adv(d_x_hat)
+        adv_loss = self.loss_adv(d_x_hat, d_x_fm, d_x_hat_fm)
 
         return cnt_loss+mch_loss+adv_loss
 

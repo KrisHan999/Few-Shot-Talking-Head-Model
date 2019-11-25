@@ -2,8 +2,9 @@ SOURCE_DATA_DIR = r'/mnt/data/kunhan/test/mp4'
 OUTPUT_DATA_DIR = r'/mnt/data/kunhan/test/outputHK'
 VGG_FACE = r'../vgg_face/vgg_face_dag.pth'
 LOG_DIR = r'logs'
-MODELS_DIR = r'models'
+MODELS_path = r'models/model_weights.ckpt'
 GENERATED_DIR = r'generated_img'
+LOG_IMAGE_DIR = r'log_img'
 
 # Dataset parameters
 FEATURES_DPI = 100
@@ -11,7 +12,7 @@ K = 8
 
 # Training hyperparameters
 IMAGE_SIZE = 256  # 224
-BATCH_SIZE = 3
+BATCH_SIZE = 2
 EPOCHS = 1000
 
 LEARNING_RATE_EG = 5e-5
@@ -24,9 +25,9 @@ LOSS_FM_WEIGHT = 1e1
 
 # GPU
 
-GPU = {'E': 'm',
-       'G': 'm',
-       'D': 'm',
-       "LossEG": 'm',
-       "LossG": 'm'
+GPU = {'E': 3,
+       'G': 3,
+       'D': 1,
+       "LossEG": 2,
+       "LossD": 1
        }

@@ -143,12 +143,11 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa)
     outputPath = os.path.join(outputDir,
                               personId + '_' + os.path.basename(os.path.dirname(videoPath)) + "_" + os.path.splitext(os.path.basename(videoPath))[0] + '.vid')
 
-    print(outputPath)
-    print(videoPath)
 
     if os.path.exists(outputPath):
         data = pkl.load(open(outputPath, 'rb'))
-        return data
+        if len(data) >= K:
+            return data
 
     selectedFrames = selectKRandomFramesForSpecificVideo(K, videoPath)
     landmarkFrames = generateLandmarksForSpecificVideo(selectedFrames, fa)
