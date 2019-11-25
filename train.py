@@ -96,54 +96,61 @@ def main():
 
     logging.info(f'Start training -> EPOCHS: {config.EPOCHS}; BATCHES: {len(dataset)}; BATCH_SIZE: {config.BATCH_SIZE}')
 
+    for epoch in range(config.EPOCHS):
+        epoch_start = datetime.now()
 
-    # person_Id_batches = torch.randn(config.BATCH_SIZE, 1)
-    # raw_data_batches = torch.randn(config.BATCH_SIZE, config.K + 1, 2, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)
-    #
-    # target_imgs = raw_data_batches[:, -1, 0, ...]                                   # [B, 3, 256, 256]
-    # target_landmarks = raw_data_batches[:, -1, 1, ...]                              # [B, 3, 256, 256]
-    #
-    # embedder_imgs = raw_data_batches[:, :-1, 0, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)       # [BxK, 3, 256, 256]
-    # embedder_landmarks = raw_data_batches[:, :-1, 1, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)  # [BxK, 3, 256, 256]
-    #
-    # embedder_vector = torch.randn(config.BATCH_SIZE*config.K, 512, 1)                                           # [BxK, 3, 512, 1]
-    # embedder_vector_mean = embedder_vector.view(-1, config.K, 512, 1).mean(dim=1)                               # [B, 512, 1]
-    # wi = torch.randn(config.BATCH_SIZE, 512, 1)
-    #
-    # generated_imgs = torch.randn(config.BATCH_SIZE, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)                    # [B, 3, 256, 256]
-    # scores_target = torch.randn(config.BATCH_SIZE, 1)                                                           # [B, 1]
-    # scores_generated_imgs = torch.randn(config.BATCH_SIZE, 1)                                                           # [B, 1]
-    #
-    #
-    # loss_D = cretirion_D(scores_target, scores_generated_imgs)
-    # loss_EG = cretirion_EG(target_imgs, generated_imgs, scores_generated_imgs, embedder_vector_mean, wi)
-    #
-    # loss = loss_D + loss_EG
-    #
-    # optimizer_EG.zero_grad()
-    # optimizer_D.zero_grad()
-    #
-    # loss.backwad()
-    # optimizer_EG.step()
-    # optimizer_D.step()
-    #
-    # # train discriminator again
-    # # detach the generated image
-    # loss_D = cretirion_D(scores_target, scores_generated_imgs)
-    # loss = loss_D
-    #
-    # optimizer_D.zero_grad()
-    # loss.backwad()
-    # optimizer_D.step()
+        E.train()
+        G.train()
+        D.train()
 
+        for batch_num, (index, data_array) in enumerate(dataset):
+            batch_start = datetime.now()
 
+            target_img = data_array[:, -1, 0, ...]                                   # [B, 3, 256, 256]
+            target_landmark = data_array[:, -1, 1, ...]                              # [B, 3, 256, 256]
 
+            embedded_img = data_array[:, :-1, 0, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)          # [BxK, 3, 256, 256]
+            embedded_landmark = data_array[:, :-1, 1, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)     # [BxK, 3, 256, 256]
 
+            embedded_vector = E(embedded_img, embedded_landmark)
+            mean_vector = embedded_vector.view(-1, config.K, 512, 1).mean(dim=1)                               # [B, 512, 1]
 
+            generated_img = G(target_landmark, mean_vector)
 
+            score_generated_img, fm_teature_hat = D(generated_img, target_landmark, index.numpy())
+            score_target_img, fm_teature = D(target_img, target_landmark, index.numpy())
 
+            wi = D.W[:, index.numpy()].T.unsqueeze(-1)
 
+            loss_D = cretirion_D(score_target_img, score_generated_img)
+            loss_EG = cretirion_EG(target_img, generated_img, score_generated_img, mean_vector, wi, fm_teature, fm_teature_hat)
 
+            loss = loss_D + loss_EG
+
+            optimizer_EG.zero_grad()
+            optimizer_D.zero_grad()
+
+            loss.backward()
+            optimizer_EG.step()
+            optimizer_D.step()
+
+            # train discriminator again
+            # detach the generated image
+            score_generated_img = D(generated_img.detach(), target_landmark, index.numpy())
+            score_target_img = D(target_img, target_landmark, index.numpy())
+            loss_D = cretirion_D(score_target_img, score_generated_img)
+            loss = loss_D
+
+            optimizer_D.zero_grad()
+            loss.backward()
+            optimizer_D.step()
+
+            batch_end = datetime.now()
+
+            logging.info(f'Epoch {epoch + 1}: [{batch_num + 1}/{len(dataset)}] | '
+                         f'Time: {batch_end - batch_start} | '
+                         f'Loss_E_G = {loss_EG.item():.4f} Loss_D = {loss_D.item():.4f}')
+            logging.debug(f'D(x) = {score_target_img.mean().item():.4f} D(x_hat) = {score_generated_img.mean().item():.4f}')
 
 if __name__ == '__main__':
     main()
