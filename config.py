@@ -1,4 +1,5 @@
-# VGG_FACE = r'/home/<user>/Documents/NeuralNetworkModels/vgg_face_dag.pth'
+SOURCE_DATA_DIR = r'/mnt/data/kunhan/test/mp4'
+OUTPUT_DATA_DIR = r'/mnt/data/kunhan/test/outputHK'
 VGG_FACE = r'../vgg_face/vgg_face_dag.pth'
 LOG_DIR = r'logs'
 MODELS_DIR = r'models'

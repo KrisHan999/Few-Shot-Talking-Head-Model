@@ -15,13 +15,16 @@ from loss.loss import *
 
 def main():
     argmentParser = argparse.ArgumentParser(description='Few-Shot-Talking-Head-Model')
-    argmentParser.add_argument("--source", type=str, required=True,
+    argmentParser.add_argument("--source", type=str, required=False,
                                 help="Path to the source folder where the raw VoxCeleb dataset is located.")
-    argmentParser.add_argument("--output", type=str, required=True,
+    argmentParser.add_argument("--output", type=str, required=False,
                                 help="Path to the folder where the pre-processed dataset will be stored.")
     argmentParser.add_argument("--gpu", action="store_true",
                                 help="Run the model on GPU.")
     args = argmentParser.parse_args()
+
+    args.source = config.SOURCE_DATA_DIR
+    args.output = config.OUTPUT_DATA_DIR
 
     # LOGGING ----------------------------------------------------------------------------------------------------------
 
