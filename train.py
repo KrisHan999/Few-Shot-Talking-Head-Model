@@ -63,7 +63,7 @@ def main():
         ])
     )
 
-    dataLoader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=False)
+    dataLoader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True)
 
     # MODEL and GPU --------------------------------------------------------------------------------------------------------
 
@@ -116,7 +116,7 @@ def main():
 
     # TRAIN
 
-    logging.info(f'Start training -> EPOCHS: {config.EPOCHS}; BATCHES: {len(dataset)}; BATCH_SIZE: {config.BATCH_SIZE} ---> CURRENT EPOCH: {epochCurrent}; CURRENT_BATCH: {batch_current}')
+    logging.info(f'Start training -> EPOCHS: {config.EPOCHS}; BATCHES: {len(dataLoader)}; BATCH_SIZE: {config.BATCH_SIZE} ---> CURRENT EPOCH: {epochCurrent}; CURRENT_BATCH: {batch_current}')
 
     for epoch in range(epochCurrent, config.EPOCHS):
         epoch_start = datetime.now()
@@ -126,55 +126,62 @@ def main():
         D.train()
 
         for batch_num, (index, data_array) in enumerate(dataLoader, start=batch_current):
-            batch_start = datetime.now()
 
-            target_img = data_array[:, -1, 0, ...]                                   # [B, 3, 256, 256]
-            target_landmark = data_array[:, -1, 1, ...]                              # [B, 3, 256, 256]
+            if batch_num > len(dataLoader):
+                batch_current = 0
+                break
 
-            embedded_img = data_array[:, :-1, 0, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)          # [BxK, 3, 256, 256]
-            embedded_landmark = data_array[:, :-1, 1, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)     # [BxK, 3, 256, 256]
+            with torch.autograd.enable_grad():
 
-            embedded_vector = E(embedded_img, embedded_landmark)
-            mean_vector = embedded_vector.view(-1, config.K, 512, 1).mean(dim=1)                               # [B, 512, 1]
+                batch_start = datetime.now()
 
-            generated_img = G(target_landmark, mean_vector)
+                target_img = data_array[:, -1, 0, ...]                                   # [B, 3, 256, 256]
+                target_landmark = data_array[:, -1, 1, ...]                              # [B, 3, 256, 256]
 
-            score_generated_img, fm_teature_hat = D(generated_img, target_landmark, index.numpy())
-            score_target_img, fm_teature = D(target_img, target_landmark, index.numpy())
+                embedded_img = data_array[:, :-1, 0, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)          # [BxK, 3, 256, 256]
+                embedded_landmark = data_array[:, :-1, 1, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)     # [BxK, 3, 256, 256]
 
-            wi = D.W[:, index.numpy()].transpose(0, 1).unsqueeze(-1)
+                embedded_vector = E(embedded_img, embedded_landmark)
+                mean_vector = embedded_vector.view(-1, config.K, 512, 1).mean(dim=1)                               # [B, 512, 1]
 
-            loss_D = cretirion_D(score_target_img, score_generated_img)
-            loss_EG = cretirion_EG(target_img, generated_img, score_generated_img, mean_vector, wi, fm_teature, fm_teature_hat)
+                generated_img = G(target_landmark, mean_vector)
 
-            loss = loss_D.to(device_0) + loss_EG.to(device_0)
+                score_generated_img, fm_teature_hat = D(generated_img, target_landmark, index.numpy())
+                score_target_img, fm_teature = D(target_img, target_landmark, index.numpy())
 
-            optimizer_EG.zero_grad()
-            optimizer_D.zero_grad()
+                wi = D.W[:, index.numpy()].transpose(0, 1).unsqueeze(-1)
 
-            loss.backward(retain_graph=False)
-            optimizer_EG.step()
-            optimizer_D.step()
+                loss_D = cretirion_D(score_target_img, score_generated_img)
+                loss_EG = cretirion_EG(target_img, generated_img, score_generated_img, mean_vector, wi, fm_teature, fm_teature_hat)
 
-            # train discriminator again
-            # detach the generated image
-            score_generated_img, fm_teature_hat = D(generated_img.detach(), target_landmark, index.numpy())
-            score_target_img, fm_teature = D(target_img, target_landmark, index.numpy())
-            loss_D = cretirion_D(score_target_img, score_generated_img)
-            loss = loss_D
+                loss = loss_D.to(device_0) + loss_EG.to(device_0)
 
-            optimizer_D.zero_grad()
-            loss.backward(retain_graph=False)
-            optimizer_D.step()
+                optimizer_EG.zero_grad()
+                optimizer_D.zero_grad()
 
-            batch_end = datetime.now()
+                loss.backward(retain_graph=False)
+                optimizer_EG.step()
+                optimizer_D.step()
 
-            logging.info(f'Epoch {epoch + 1}: [{batch_num + 1}/{len(dataset)}] | '
-                         f'Time: {batch_end - batch_start} | '
-                         f'Loss_E_G = {loss_EG.item():.4f} Loss_D = {loss_D.item():.4f}')
-            logging.debug(f'D(x) = {score_target_img.mean().item():.4f} D(x_hat) = {score_generated_img.mean().item():.4f}')
+                # train discriminator again
+                # detach the generated image
+                score_generated_img, fm_teature_hat = D(generated_img.detach(), target_landmark, index.numpy())
+                score_target_img, fm_teature = D(target_img, target_landmark, index.numpy())
+                loss_D = cretirion_D(score_target_img, score_generated_img)
+                loss = loss_D
 
-            if batch_num % 500 == 499:
+                optimizer_D.zero_grad()
+                loss.backward(retain_graph=False)
+                optimizer_D.step()
+
+                batch_end = datetime.now()
+
+                logging.info(f'Epoch {epoch + 1}: [{batch_num + 1}/{len(dataLoader)}] | '
+                             f'Time: {batch_end - batch_start} | '
+                             f'Loss_E_G = {loss_EG.item():.4f} Loss_D = {loss_D.item():.4f}')
+                logging.debug(f'D(x) = {score_target_img.mean().item():.4f} D(x_hat) = {score_generated_img.mean().item():.4f}')
+
+            if batch_num % 250 == 249:
                 logging.info('Saving latest: epoch: {epoch}; batch: {batch_num}')
                 torch.save({
                     'epoch': epoch,
@@ -206,7 +213,7 @@ def main():
                     # plt.imshow(temp_output)
                     # plt.show()
 
-        if(epoch % 500 == 499):
+        if(epoch % 10 == 499):
             logging.info('Saving model epoch: {epoch}')
             torch.save({
                 'epoch': epoch,

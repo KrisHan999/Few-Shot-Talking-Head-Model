@@ -149,6 +149,11 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa)
         if len(data) >= K:
             return data
 
+    print('Generate data ...')
+
+    print(videoPath)
+    print(outputPath)
+
     selectedFrames = selectKRandomFramesForSpecificVideo(K, videoPath)
     landmarkFrames = generateLandmarksForSpecificVideo(selectedFrames, fa)
 

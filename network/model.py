@@ -11,22 +11,22 @@ class Embedder(nn.Module):
 
         super(Embedder, self).__init__()
 
-        self.resBlock = ResidualBlockED(in_dim=6, out_dim=64)  # [B, 64, 256, 256]
+        self.resBlock = ResidualBlockED(in_dim=6, out_dim=64)  # [BxK, 64, 256, 256]
 
-        self.resDown1 = ResidualBlockED(in_dim=64, out_dim=128, down_sample=True,  pre_activation=True)  # [B, 128, 128, 128]
-        self.resDown2 = ResidualBlockED(in_dim=128, out_dim=256, down_sample=True, pre_activation=True)  # [B, 256, 64, 64]
-        self.resDown3 = ResidualBlockED(in_dim=256, out_dim=512, down_sample=True, pre_activation=True)  # [B, 512, 32, 32]
+        self.resDown1 = ResidualBlockED(in_dim=64, out_dim=128, down_sample=True,  pre_activation=True)  # [BxK, 128, 128, 128]
+        self.resDown2 = ResidualBlockED(in_dim=128, out_dim=256, down_sample=True, pre_activation=True)  # [BxK, 256, 64, 64]
+        self.resDown3 = ResidualBlockED(in_dim=256, out_dim=512, down_sample=True, pre_activation=True)  # [BxK, 512, 32, 32]
 
         self.selfAttendion = SelfAttention(in_dim=512)  # [B, 512, 32, 32]
 
-        self.resDown4 = ResidualBlockED(in_dim=512, out_dim=512, down_sample=True, pre_activation=True)  # [B, 512, 16, 16]
-        self.resDown5 = ResidualBlockED(in_dim=512, out_dim=512, down_sample=True, pre_activation=True)  # [B, 512, 8, 8]
-        self.resDown6 = ResidualBlockED(in_dim=512, out_dim=512, down_sample=True, pre_activation=True)  # [B, 512, 4, 4]
+        self.resDown4 = ResidualBlockED(in_dim=512, out_dim=512, down_sample=True, pre_activation=True)  # [BxK, 512, 16, 16]
+        self.resDown5 = ResidualBlockED(in_dim=512, out_dim=512, down_sample=True, pre_activation=True)  # [BxK, 512, 8, 8]
+        self.resDown6 = ResidualBlockED(in_dim=512, out_dim=512, down_sample=True, pre_activation=True)  # [BxK, 512, 4, 4]
 
 
         self.relu = nn.ReLU(inplace=False)
         # average pooling is propositional to the sum pooling
-        self.avgPool = nn.AdaptiveAvgPool2d(output_size=(1, 1))                         # [B, 512, 1, 1]
+        self.avgPool = nn.AdaptiveAvgPool2d(output_size=(1, 1))                                          # [BxK, 512, 1, 1]
 
         self.gpu = gpu
         if self.gpu is not None:
@@ -60,7 +60,7 @@ class Embedder(nn.Module):
 
         out = self.avgPool(out)
 
-        out = out.view(B, 512, 1)
+        out = out.view(B, 512, 1)           # [BxK, 512, 1]
 
         return out
 
