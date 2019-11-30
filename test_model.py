@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 import argparse
-from dataset.customeDataset import *
+from dataset.customDataset import *
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torch.optim import Adam

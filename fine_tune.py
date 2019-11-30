@@ -18,23 +18,21 @@ from loss.loss import *
 def main():
     argmentParser = argparse.ArgumentParser(description='Few-Shot-Talking-Head-Model')
     argmentParser.add_argument("--source", type=str, required=False,
+                               help="Path to the source folder where the raw VoxCeleb dataset is located.")
+    argmentParser.add_argument("--videoPath", type=str, required=False,
                                 help="Path to the source folder where the raw VoxCeleb dataset is located.")
-    argmentParser.add_argument("--output", type=str, required=False,
-                                help="Path to the folder where the pre-processed dataset will be stored.")
     argmentParser.add_argument("--gpu", action="store_true",
                                 help="Run the model on GPU.")
     args = argmentParser.parse_args()
 
-    args.source = config.SOURCE_DATA_DIR
-    args.output = config.OUTPUT_DATA_DIR
 
     # LOGGING ----------------------------------------------------------------------------------------------------------
 
-    if not os.path.isdir(config.LOG_DIR):
-        os.makedirs(config.LOG_DIR)
+    if not os.path.isdir(config.FINETUNE_LOG_DIR):
+        os.makedirs(config.FINETUNE_LOG_DIR)
     logging.basicConfig(
         level=logging.INFO,
-        filename=os.path.join(config.LOG_DIR, f'{datetime.now():%Y%m%d}.log'),
+        filename=os.path.join(config.FINETUNE_LOG_DIR, f'{datetime.now():%Y%m%d}.log'),
         format='[%(asctime)s][%(levelname)s] %(message)s',
         datefmt='%H:%M:%S'
     )
@@ -45,25 +43,23 @@ def main():
 
 
     # DATASET and DATALOADER -------------------------------------------------------------------------------------------
-    logging.info(f'Original training dataset located in {args.source}')
-    logging.info(f'Processed training dataset located in {args.output}')
+    logging.info(f'Fine tuning videoPath is {args.videoPath}')
 
-    dataset = metaTrainVideoDataset(
-        K=config.K,
-        rootDir=args.source,
-        outputDir=args.output,
-        randomFrame=True,
-        device='cuda' if (torch.cuda.is_available() and args.gpu) else 'cpu',
-        transform=transforms.Compose([
-            transforms.Resize(config.IMAGE_SIZE),
-            transforms.CenterCrop(config.IMAGE_SIZE),
-            transforms.ToTensor()
-            # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-            #                      std=[0.229, 0.224, 0.225])
-        ])
-    )
+    fine_tune_dataset = FineTuneVideoDataset(lenDataset=config.LEN_FINETUNE,
+                                             K=config.K,
+                                             videoPath=args.videoPath,
+                                             device='cuda' if (torch.cuda.is_available() and args.gpu) else 'cpu',
+                                             transform=transforms.Compose([
+                                                 transforms.Resize(256),
+                                                 transforms.CenterCrop(256),
+                                                 transforms.ToTensor(),
+                                             ])
+                                             )
 
-    dataLoader = DataLoader(dataset, batch_size=config.BATCH_SIZE, shuffle=True)
+    dataLoader = DataLoader(fine_tune_dataset, batch_size=config.BATCH_SIZE, shuffle=True)
+
+    videoList = generateVideoList(args.source)
+    num_person = len(videoList)
 
     # MODEL and GPU --------------------------------------------------------------------------------------------------------
 
@@ -71,7 +67,7 @@ def main():
 
     E = Embedder(gpu=config.GPU["E"])
     G = Generator(gpu=config.GPU["G"])
-    D = Discriminator(num_person=len(dataset), gpu=config.GPU["D"])
+    D = Discriminator(num_person=num_person, gpu=config.GPU["D"])
 
     # pytorch_total_params = sum(p.numel() for p in G.parameters()) + sum(p.numel() for p in E.parameters()) + sum(p.numel() for p in D.parameters())
     # print("Total size of parameters for E, G, D is: ", pytorch_total_params)
@@ -200,8 +196,8 @@ def main():
                 if(target_img.shape[0] == config.BATCH_SIZE):
                     temp_output = []
                     for i in range(config.BATCH_SIZE):
-                        temp_output.append(np.concatenate([target_img[i].permute(1, 2, 0).detach().cpu().numpy(), 
-                                        target_landmark[i].permute(1, 2, 0).detach().cpu().numpy(), 
+                        temp_output.append(np.concatenate([target_img[i].permute(1, 2, 0).detach().cpu().numpy(),
+                                        target_landmark[i].permute(1, 2, 0).detach().cpu().numpy(),
                                         generated_img[i].permute(1, 2, 0).detach().cpu().numpy()],
                                         axis=0))
                     temp_output = np.concatenate(temp_output, axis=1)

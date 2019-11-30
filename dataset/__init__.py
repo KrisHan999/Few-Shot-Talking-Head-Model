@@ -1,2 +1,2 @@
-from .customeDataset import *
+from .customDataset import *
 from .processVoxCelDataset import *

@@ -123,7 +123,7 @@ def generateLandmarksForSpecificVideo(frames, fa):
     return landmarkFrames
 
 
-def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa):
+def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa, random=None):
     """
     Generate random frame list and landmark frame list, which are both [K, H. W. 3].
     :param K: Number of frames
@@ -144,7 +144,7 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa)
                               personId + '_' + os.path.basename(os.path.dirname(videoPath)) + "_" + os.path.splitext(os.path.basename(videoPath))[0] + '.vid')
 
 
-    if os.path.exists(outputPath):
+    if os.path.exists(outputPath) and random is not None:
         data = pkl.load(open(outputPath, 'rb'))
         if len(data) >= K:
             return data
@@ -167,6 +167,28 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa)
     pkl.dump(data, open(outputPath, 'wb'))
 
     return data
+
+def generateDataForFineTuning(K, videoPath, fa):
+    '''
+
+    :param K:
+    :param videoPath:
+    :param fa:
+    :param random:
+    :return:
+    '''
+
+    selectedFrames = selectKRandomFramesForSpecificVideo(K, videoPath)
+    landmarkFrames = generateLandmarksForSpecificVideo(selectedFrames, fa)
+
+    data = []
+
+    for selectedFrame, landmarkFrame in zip(selectedFrames, landmarkFrames):
+        data.append({"frame": selectedFrame,
+                     "landmarks": landmarkFrame})
+
+    return data
+
 
 '''
 K = 8

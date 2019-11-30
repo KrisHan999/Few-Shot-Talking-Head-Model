@@ -1,6 +1,6 @@
 import torch
 import config
-from dataset.customeDataset import *
+from dataset.customDataset import *
 from torchvision import transforms
 
 source = config.SOURCE_DATA_DIR
