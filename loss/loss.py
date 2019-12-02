@@ -98,8 +98,11 @@ class LossEG(nn.Module):
             x = x.cuda(self.gpu)
             x_hat = x_hat.cuda(self.gpu)
             d_x_hat = d_x_hat.cuda(self.gpu)
-            mean_vector = mean_vector.cuda(self.gpu)
-            wi = wi.cuda(self.gpu)
+            if wi is None or mean_vector is None:
+                pass
+            else:
+                mean_vector = mean_vector.cuda(self.gpu)
+                wi = wi.cuda(self.gpu)
             d_x_fm = [data.cuda(self.gpu) for data in d_x_fm]
             d_x_hat_fm = [data.cuda(self.gpu) for data in d_x_hat_fm]
 
@@ -108,6 +111,11 @@ class LossEG(nn.Module):
         mch_loss = self.loss_mch(mean_vector, wi)
         adv_loss = self.loss_adv(d_x_hat, d_x_fm, d_x_hat_fm)
 
-        return cnt_loss+mch_loss+adv_loss
+        loss = cnt_loss + adv_loss
+        if wi is None or mean_vector is None:
+            return loss
+        else:
+            loss = loss + mch_loss
+            return loss
 
 

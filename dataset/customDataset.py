@@ -41,7 +41,7 @@ class metaTrainVideoDataset(Dataset):
         data_array = []
         for i, d in enumerate(data):
             if i == self.K+1:
-                break;
+                break
             index = d["index"]
             frame = PIL.Image.fromarray(d['frame'], 'RGB')  # [H, W, 3]
             landmarks = PIL.Image.fromarray(d['landmarks'], 'RGB')  # [H, W, 3]
@@ -60,11 +60,10 @@ class metaTrainVideoDataset(Dataset):
 
 
 class FineTuneVideoDataset(Dataset):
-    def __init__(self, lenDataset, K, videoPath, randomFrame=None, device='gpu', transform=None):
+    def __init__(self, T, videoPath, randomFrame=None, device='gpu', transform=None):
 
         super(FineTuneVideoDataset, self).__init__()
-        self.lenDataset = lenDataset
-        self.K = K
+        self.T = T
         self.videoPath = videoPath
         self.randomFrame = randomFrame
         self.device = device
@@ -72,20 +71,15 @@ class FineTuneVideoDataset(Dataset):
 
         self.fa = FaceAlignment(LandmarksType._2D, device=device)
 
-    def __len__(self):
-        return self.lenDataset
+        self.data = generateDataForFineTuning(self.T, self.videoPath, self.fa)
 
-    def __getitem__(self, idx):
+        self.data_array = self.preapreData()                            # [T, 2, 3, H, W]
 
-        data = generateDataForFineTuning(self.K+1, self.videoPath, self.fa)
-
-        if self.randomFrame:
-            random.shuffle(data)
-
+    def preapreData(self):
         data_array = []
-        for i, d in enumerate(data):
-            if i == self.K + 1:
-                break;
+        for i, d in enumerate(self.data):
+            if i == self.T:
+                break
             frame = PIL.Image.fromarray(d['frame'], 'RGB')  # [H, W, 3]
             landmarks = PIL.Image.fromarray(d['landmarks'], 'RGB')  # [H, W, 3]
             if self.transform:
@@ -94,16 +88,14 @@ class FineTuneVideoDataset(Dataset):
             assert torch.is_tensor(frame), "The source images must be converted to Tensors."
             assert torch.is_tensor(landmarks), "The source landmarks must be converted to Tensors."
             data_array.append(torch.stack((frame, landmarks)))  # [2, 3, H, W]
-        data_array = torch.stack(data_array)  # [K+1, 2, 3, H, W]
-
-        assert torch.eq(torch.tensor(data_array.shape), torch.tensor([self.K + 1, 2, 3, config.IMAGE_SIZE,
-                                                                      config.IMAGE_SIZE])).all(), f'Wrong data size-> {data_array.shape}; target shape -> {[self.K + 1, 2, 3, config.IMAGE_SIZE, config.IMAGE_SIZE]}'
-
+        data_array = torch.stack(data_array)  # [T, 2, 3, H, W]
         return data_array
 
 
+    def __len__(self):
+        return self.T
 
+    def __getitem__(self, idx):
 
-
-
-
+        index = np.squeeze(np.random.choice(self.T, 1))
+        return self.data_array[index]
