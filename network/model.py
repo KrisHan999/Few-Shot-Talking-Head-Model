@@ -109,6 +109,9 @@ class Discriminator(nn.Module):
         initialize w_prime = e + w_0
         :param e: [512, 1]
         '''
+        if self.gpu is not None:
+            e = e.cuda(self.gpu)
+
         self.finetuning = True
         self.wPrime.data = e.detach().data + self.w_0.data                                    # [512, 1]
 
@@ -144,7 +147,7 @@ class Discriminator(nn.Module):
         if self.finetuning:
             # out -> [1, 1, 512]
             # wPrime -> [512, 1]
-            print('finetuning')
+            # print('finetuning')
             out = torch.bmm(out, self.wPrime.unsqueeze(0)) + self.b
         else:
             assert i is not None, "input person id"
@@ -214,6 +217,8 @@ class Generator(nn.Module):
         initialize w_prime = e + w_0
         :param e: [512, 1]
         '''
+        if self.gpu is not None:
+            e = e.cuda(self.gpu)
         self.finetuning = True
         self.psi.data = torch.bmm(self.P.detach().view(1, self.P_Len, 512), e.detach().view(1, 512, 1)).data              # [1, P_Len, 1]
 

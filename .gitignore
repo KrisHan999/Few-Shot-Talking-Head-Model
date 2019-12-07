@@ -11,6 +11,9 @@ models
 logs
 log_img
 __pycache__
+finetune_log_img
+finetune_logs
+
 
 dataForFewShotTalkingHeadModel
 

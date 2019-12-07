@@ -108,13 +108,13 @@ class LossEG(nn.Module):
 
 
         cnt_loss = self.loss_cnt(x, x_hat)
-        mch_loss = self.loss_mch(mean_vector, wi)
         adv_loss = self.loss_adv(d_x_hat, d_x_fm, d_x_hat_fm)
 
         loss = cnt_loss + adv_loss
         if wi is None or mean_vector is None:
             return loss
         else:
+            mch_loss = self.loss_mch(mean_vector, wi)
             loss = loss + mch_loss
             return loss
 

@@ -144,7 +144,7 @@ def generateKSelectedFramesAndLandmarksForSpecificVideo(K, video, outputDir, fa,
                               personId + '_' + os.path.basename(os.path.dirname(videoPath)) + "_" + os.path.splitext(os.path.basename(videoPath))[0] + '.vid')
 
 
-    if os.path.exists(outputPath) and random is not None:
+    if os.path.exists(outputPath) and random is None:
         data = pkl.load(open(outputPath, 'rb'))
         if len(data) >= K:
             return data

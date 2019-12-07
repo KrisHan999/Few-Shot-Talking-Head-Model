@@ -98,13 +98,15 @@ def main():
 
     # TRAIN
 
-    logging.info(f'Start training -> EPOCHS: {config.EPOCHS}; BATCHES: {len(dataLoader)}; BATCH_SIZE: {config.BATCH_SIZE} ---> CURRENT EPOCH: {epochCurrent}; CURRENT_BATCH: {batch_current}')
+    logging.info(f'Start training -> EPOCHS: {config.FINE_TUNE_EPOCHS}; BATCHES: {len(dataLoader)}; BATCH_SIZE: {config.BATCH_SIZE}')
 
-    embedded_img = fine_tune_dataset.data_array[:, :, 0, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)  # [T, 3, 256, 256]
-    embedded_landmark = fine_tune_dataset.data_array[:, :, 1, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)  # [T, 3, 256, 256]
+    embedded_img = fine_tune_dataset.data_array[:, 0, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)  # [T, 3, 256, 256]
+    embedded_landmark = fine_tune_dataset.data_array[:, 1, ...].reshape(-1, 3, config.IMAGE_SIZE, config.IMAGE_SIZE)  # [T, 3, 256, 256]
 
     embedded_vector = E(embedded_img, embedded_landmark)
-    mean_vector = embedded_vector.mean(dim=1)  # [1, 512, 1]
+    # print(embedded_vector.shape)
+    mean_vector = embedded_vector.mean(dim=0)  # [512, 1]
+    # print(mean_vector.shape)
 
     logging.info("===== Initialize fine tuning =====")
     G.initFinetuning(mean_vector)
@@ -125,10 +127,12 @@ def main():
 
                 batch_start = datetime.now()
 
-                target_img = data[:, 0, ...].unsqueeze(0)                                   # [1, 3, 256, 256]
-                target_landmark = data[:, 1, ...].unsqueeze(0)                              # [1, 3, 256, 256]
+                target_img = data[:, 0, ...]                                   # [1, 3, 256, 256]
+                target_landmark = data[:, 1, ...]                            # [1, 3, 256, 256]
 
-                generated_img = G(target_landmark, mean_vector)
+                # print(target_landmark.shape)
+
+                generated_img = G(target_landmark, mean_vector.unsqueeze(0).expand(target_landmark.shape[0], 512, 1))
 
                 score_generated_img, fm_teature_hat = D(generated_img, target_landmark)
                 score_target_img, fm_teature = D(target_img, target_landmark)
@@ -166,7 +170,7 @@ def main():
 
 
         if(epoch % 2 == 1):
-            logging.info('Saving model epoch: {epoch}')
+            logging.info(f'Saving model epoch: {epoch}')
             torch.save({
                 'epoch': meta_epochCurrent,
                 'loss_EG': loss_EG,
@@ -179,20 +183,19 @@ def main():
                 'num_vid': meta_num_vid,
                 'batch_num': meta_batch_current
                 }, config.MODELS_path)
-            logging.info('Done saving model epoch: {epoch}')
+            logging.info(f'Done saving model epoch: {epoch}')
 
-            if (target_img.shape[0] == config.BATCH_SIZE):
-                temp_output = []
-                for i in range(config.BATCH_SIZE):
-                    temp_output.append(np.concatenate([target_img[i].permute(1, 2, 0).detach().cpu().numpy(),
-                                                       target_landmark[i].permute(1, 2, 0).detach().cpu().numpy(),
-                                                       generated_img[i].permute(1, 2, 0).detach().cpu().numpy()],
-                                                      axis=0))
-                temp_output = np.concatenate(temp_output, axis=1)
+            temp_output = []
+            for i in range(target_img.shape[0]):
+                temp_output.append(np.concatenate([target_img[i].permute(1, 2, 0).detach().cpu().numpy(),
+                                                   target_landmark[i].permute(1, 2, 0).detach().cpu().numpy(),
+                                                   generated_img[i].permute(1, 2, 0).detach().cpu().numpy()],
+                                                  axis=0))
+            temp_output = np.concatenate(temp_output, axis=1)
 
-                img = (temp_output * 255.0).clip(0, 255).astype("uint8")
-                img = Image.fromarray(img)
-                img.save(os.path.join(config.LOG_IMAGE_DIR, f'epoch_{epoch}_batch_{batch_num}.jpg'))
+            img = (temp_output * 255.0).clip(0, 255).astype("uint8")
+            img = Image.fromarray(img)
+            img.save(os.path.join(config.FINETUNE_LOG_IMAGE_DIR, os.path.splitext(os.path.basename(args.videoPath))[0]+f'_epoch_{epoch}_batch_{batch_num}.jpg'))
 
 
 if __name__ == '__main__':
